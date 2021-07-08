@@ -22,8 +22,8 @@ import Download from "./components/Download.vue";
 import Peaks from "./components/Peaks.vue";
 import Aligner from "./components/Aligner.vue";
 
-import { useAligner } from "./components/aligner";
-import { useTranscriber } from "./components/transcriber";
+import { useAligner } from "./compositions/aligner";
+import { useTranscriber } from "./compositions/transcriber";
 
 // create one AudioContext and reuse it instead of initializing a new one each time
 let audioContext: AudioContext;
