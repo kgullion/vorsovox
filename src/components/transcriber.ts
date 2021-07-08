@@ -5,9 +5,10 @@ import type {
 } from "vosk-browser/dist/interfaces";
 import { computed, ref, Ref, watch, triggerRef } from "vue";
 import { segmentOnSilence } from "./vad";
+import voskUrl from "../assets/vosk-model-small-en-us-0.15.tar.gz?url";
 
 export async function createTranscriber(
-  modelUrl = "/vosk-model-small-en-us-0.15.tar.gz"
+  modelUrl = voskUrl
 ) {
   const model = await createModel(modelUrl);
   return {
