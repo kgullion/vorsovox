@@ -1,8 +1,11 @@
 // vad-processor.js
 class VadProcessor extends AudioWorkletProcessor {
-  prev: number[][] | undefined;
-  hold: number[][] | undefined;
-  process(inputs: Float32Array[][], outputs: Float32Array[][]) {
+  prev; // : number[][] | undefined;
+  hold; // : number[][] | undefined;
+  process(
+    inputs, // : Float32Array[][],
+    outputs // : Float32Array[][]
+  ) {
     const I = inputs?.length ?? 0,
       J = inputs[0]?.length ?? 0,
       K = inputs[0][0]?.length ?? 0,
