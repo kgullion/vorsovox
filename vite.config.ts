@@ -4,7 +4,7 @@ import vue from "@vitejs/plugin-vue";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "",
+  base: "/vorsovox/",
   plugins: [
     vue(),
     importToCDN({
@@ -16,15 +16,10 @@ export default defineConfig({
           path: "dist/vue.global.prod.js",
         },
         {
-          name: "peaks.js",
-          var: "peaks",
-          path: "peaks.js",
-        },
-        {
           name: "vosk-browser",
           var: "Vosk",
           path: "/dist/vosk.js",
-        }
+        },
       ],
     }),
   ],

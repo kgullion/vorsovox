@@ -1,35 +1,34 @@
 <template lang="pug">
-label(for="uploadWav") Select .wav file:
-input(type="file" @change="onWav" accept=".wav" id="uploadWav")
-label(for="uploadTxt") Select .txt file:
-input(type="file" @change="onTxt" accept=".txt" id="uploadTxt")
+ElUpload(action :auto-upload="false" @change="onWav")
+  ElButton(size="small" type="primary")
+    i.el-icon-headset
+    span.el-upload__text Select audio file (.wav)
+ElUpload(action :auto-upload="false" @change="onTxt")
+  ElButton(size="small" type="primary")
+    i.el-icon-notebook-2
+    span.el-upload__text Select script file (.txt)
 </template>
 
 <script setup lang="ts">
-import { defineEmit, inject } from "vue";
+import { defineEmit, inject, ref, watchEffect } from "vue";
+import { ElButton, ElUpload } from "element-plus";
 
 const getCtx = inject<() => AudioContext>("getAudioContext");
 const emit = defineEmit(["wav", "txt"]);
 
-// helper function to extract first file from input elem, if it exists
-const extractFile = (elem: HTMLInputElement) =>
-  elem?.files?.length ? elem.files[0] : null;
-
 // on audio file load, convert to AudioBuffer and emit
-const onWav = async (event: Event) => {
-  const file = extractFile(event.currentTarget as HTMLInputElement);
-  if (!file) emit("wav", file);
+const onWav = async ({ raw }: any) => {
+  if (!raw) emit("wav", raw);
   else {
     const ctx = getCtx!();
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await raw.arrayBuffer();
     emit("wav", await ctx.decodeAudioData(arrayBuffer));
   }
 };
 
 // on text file load, extract text and emit
-const onTxt = async (event: Event) => {
-  const file = extractFile(event.currentTarget as HTMLInputElement);
-  if (!file) emit("txt", "");
-  else emit("txt", await file.text());
+const onTxt = async ({ raw }: any) => {
+  if (!raw) emit("txt", "");
+  else emit("txt", await raw.text());
 };
 </script>

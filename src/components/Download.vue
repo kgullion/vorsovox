@@ -1,5 +1,5 @@
 <template lang="pug">
-button(@click="download()") download
+ElButton(@click="download()") download
 a(v-show="false" ref="downloadAnchor" download)
 </template>
 
@@ -7,6 +7,7 @@ a(v-show="false" ref="downloadAnchor" download)
 import { defineEmit, defineProps, ref } from "vue";
 import type { PropType } from "vue";
 import audioBufferToWav from "audiobuffer-to-wav";
+import { ElButton } from "element-plus";
 
 const props = defineProps({
   audioBuffer: { type: Object as PropType<AudioBuffer | undefined> },
