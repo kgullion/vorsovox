@@ -1,7 +1,6 @@
 import type { ServerMessageResult } from "vosk-browser/dist/interfaces";
-import { ref, Ref, watch, triggerRef } from "vue";
+import { ref, Ref, watch, triggerRef, computed } from "vue";
 import { createTranscriber } from "../logic/transcribe";
-import type { Transcriber } from "../logic/transcribe";
 
 export function useTranscriber(audioBuffer: Ref<AudioBuffer | undefined>) {
   const transcription = ref<ServerMessageResult["result"]["result"]>([]);
@@ -39,11 +38,23 @@ export function useTranscriber(audioBuffer: Ref<AudioBuffer | undefined>) {
   watch(audioBuffer, update);
   // update();
 
+  const percentage = computed(() => {
+    if (!audioBuffer.value) return 0;
+    else if (!transcribing.value) return 100;
+    else if (!transcription.value.length) return 0;
+    else
+      return (
+        (100 * transcription.value[transcription.value.length - 1].end) /
+        audioBuffer.value.duration
+      );
+  });
+
   return {
     // terminate: vosk.then((v) => v.terminate()),
     transcription,
     text,
     partial,
+    percentage,
     transcribing,
   };
 }

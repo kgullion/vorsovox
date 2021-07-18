@@ -10,6 +10,9 @@ ElTabs(v-model="tab")
     br
     | Padding around segments: 
     ElInputNumber(v-model="autoSegmentPadding")
+    br
+    | Minimum word count per segment: 
+    ElInputNumber(v-model="aligner.minWordCount.value")
   ElTabPane(label="Manual Align" name="edit" :disabled="transcribing || !audioBuffer")
     br
     | From: 
@@ -21,7 +24,7 @@ ElTabs(v-model="tab")
     ElButton(@click="addRemoveRegion" :disabled="activeRegion.start===undefined || activeRegion.end===undefined") {{ activeRegion.id?"Delete":"Add" }} Region
   ElTabPane(label="Export" name="export" :disabled="transcribing || !audioBuffer")
     Download(:audioBuffer="audioBuffer" :segments="exportSegments")
-ElProgress(:percentage="transcribedPercentage" v-show="transcribing")
+ElProgress(:percentage="percentage" v-show="transcribing")
 ElCard(v-loading="transcribing" element-loading-text="Transcribing Audio...")
   div(ref="waveformDiv" style="height: 200px")
   audio(ref="audio")
@@ -30,14 +33,7 @@ ElCard(v-loading="transcribing" element-loading-text="Transcribing Audio...")
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  watchEffect,
-  watch,
-  inject,
-  triggerRef,
-} from "vue";
+import { ref, computed, watchEffect, watch, inject, triggerRef } from "vue";
 
 import {
   ElInputNumber,
@@ -66,17 +62,8 @@ const activeRegionColor = "#00000088";
 const tab = ref("files");
 const corpus = ref<string>("");
 const audioBuffer = ref<AudioBuffer>();
-const { transcription, partial, transcribing } = useTranscriber(audioBuffer);
-const transcribedPercentage = computed(() => {
-  if (!audioBuffer.value) return 0;
-  else if (!transcribing.value) return 100;
-  else if (!transcription.value.length) return 0;
-  else
-    return (
-      (100 * transcription.value[transcription.value.length - 1].end) /
-      audioBuffer.value.duration
-    );
-});
+const { transcription, partial, transcribing, percentage } =
+  useTranscriber(audioBuffer);
 
 // setup auto-alignment
 const autoSegmentGap = ref(1);
@@ -129,14 +116,14 @@ const setActiveRegionId = (id: string | undefined) => {
 const setActiveRegion = (region: Region) => {
   if (activeRegion.value.id === region.id) return;
   regionMap.value.set(region.id, region);
-  regionSpans.value.set(region.id, [region.start, region.end])
+  regionSpans.value.set(region.id, [region.start, region.end]);
   setActiveRegionId(region.id);
 };
 
 // event handlers for wavesurfer
 const createHandler = (region: Region) => {
   regionMap.value.set(region.id, region);
-  regionSpans.value.set(region.id, [region.start, region.end])
+  regionSpans.value.set(region.id, [region.start, region.end]);
   triggerRef(regionMap);
 };
 const removeHandler = (region: Region) => {
@@ -145,11 +132,11 @@ const removeHandler = (region: Region) => {
   triggerRef(regionMap);
 };
 const updateHandler = (region: Region) => {
-  const span = regionSpans.value.get(region.id)
-  if (span && (span[0] !==region.start || span[1] !==region.end))
-    autoAlign.value=false
+  const span = regionSpans.value.get(region.id);
+  if (span && (span[0] !== region.start || span[1] !== region.end))
+    autoAlign.value = false;
   regionMap.value.set(region.id, region);
-  regionSpans.value.set(region.id, [region.start, region.end])
+  regionSpans.value.set(region.id, [region.start, region.end]);
   if (region.color === activeRegionColor) {
     const { id, start, end } = region;
     activeRegion.value = { id, start, end };

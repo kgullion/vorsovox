@@ -1,7 +1,7 @@
 import { computed, ref, Ref } from "vue";
 import { doubleMetaphone } from "double-metaphone";
-import { glocalAlignSegments } from "../logic/align";
-
+import { isEqual } from "lodash";
+import { Edge, glocalAlignSegments } from "../logic/align";
 export function useSegmentAligner<Word extends { word: string }>(
   corpus: Ref<string>,
   segments: Ref<Word[][]>
@@ -54,52 +54,66 @@ export function useSegmentAligner<Word extends { word: string }>(
     )
   );
 
-  // convert all trace indices back into corpus/segment indices
-  const phoneTraces = computed(() =>
-    phoneScores.value.map((segment, s) =>
-      segment.traces.map((trace) =>
-        trace
-          .filter(({ i, j }) => i !== 0 && j !== 0)
-          .map(({ i, j }) => ({
-            s: s,
-            t: corpusPhones.value[i - 1].t,
-            w: segmentPhones.value[s][j - 1].w,
-          }))
-          // remove duplicates
-          .filter(
-            ({ s, t, w }, i, arr) =>
-              i === 0 ||
-              s !== arr[i - 1].s ||
-              t !== arr[i - 1].t ||
-              w !== arr[i - 1].w
-          )
-      )
-    )
-  );
-
   // minimum word count for a segment trace to be included
   const minWordCount = ref(3);
 
-  const fullTrace = computed(() => {
-    // mark current index into the corpus tokens
-    let marker = Infinity;
-    return (
-      phoneTraces.value
-        // assume the best take is the most recent and accumalate full trace
-        .reduceRight((acc, trace, s) => {
-          if (trace.length === 0) return acc;
-          // find where current trace ends and the trace to the right begins
-          let splitAt = trace[0].findIndex(({ t }) => t >= marker);
-          if (splitAt < 0) splitAt = trace[0].length;
-          // add current trace and update marker if minWordCount is met
-          if (trace[0][splitAt - 1]?.w >= minWordCount.value - 1) {
-            acc.push(trace[0].slice(0, splitAt).map((e) => ({ ...e, s })));
-            marker = trace[0][0].t;
-          }
-          return acc;
-        }, [] as { t: number; s: number; w: number }[][])
-        .reverse()
-    );
+  const trace = computed(() => {
+    let trace: { s: number; t: number; w: number }[] = [];
+    if (!phoneScores.value.length) return trace;
+    // I tracks current corpus phone during backtrack
+    let corpusPhoneIdx = phoneScores.value[0].scores.length - 1;
+    if (corpusPhoneIdx <= 0) return trace;
+    for (let segmentIdx = phoneScores.value.length; segmentIdx--; ) {
+      const { scores, edges } = phoneScores.value[segmentIdx];
+      // j tracks segment phone
+      let segmentPhoneIdx = 0;
+      // find best match j for current corpus phone
+      for (let j = scores[0].length; --j; )
+        if (scores[corpusPhoneIdx][segmentPhoneIdx] < scores[corpusPhoneIdx][j])
+          segmentPhoneIdx = j;
+      // backtrack to beginning of segment
+      let i = corpusPhoneIdx;
+      let j = segmentPhoneIdx;
+      let path = [];
+      while (i > 1 && j > 1) {
+        const edge = edges[i][j];
+        if (edge & Edge.MATCH) i--, j--;
+        else if (edge & Edge.INSERT) i--;
+        else if (edge & Edge.DELETE) j--;
+        else throw "edge not found";
+        path.push([i, j]);
+      }
+      // ensure minimum corpus word count
+      const corpusTokenIdxStart = corpusPhones.value[i - 1].t;
+      const corpusTokenIdxEnd = corpusPhones.value[corpusPhoneIdx - 1].t;
+      // console.log(
+      //   segmentIdx,
+      //   i,
+      //   corpusPhoneIdx,
+      //   corpusTokens.value
+      //     .slice(corpusTokenIdxStart, corpusTokenIdxEnd + 1)
+      //     .join(" "),
+      //   j,
+      //   segmentPhoneIdx,
+      //   segments.value[segmentIdx].map(({ word }) => word).join(" ")
+      // );
+      if (corpusTokenIdxEnd - corpusTokenIdxStart >= minWordCount.value) {
+        // mark the start/end of the alignment for current segment
+        path
+          .map(([i, j]) => [
+            corpusPhones.value[i - 1].t,
+            segmentPhones.value[segmentIdx][j - 1].w,
+          ])
+          .filter((point, i, arr) => !isEqual(point, arr[i - 1]))
+          .forEach(([t, w]) => trace.push({ s: segmentIdx, t, w }));
+        // move back to word phone not in first word of current segment
+        while (corpusPhones.value[corpusPhoneIdx - 1]?.t >= corpusTokenIdxStart)
+          corpusPhoneIdx--;
+      }
+      // exit early if whole corpus is matched
+      if (corpusPhoneIdx <= 0) break;
+    }
+    return trace.reverse();
   });
 
   // annotate segments according to the corpus trace
@@ -108,8 +122,8 @@ export function useSegmentAligner<Word extends { word: string }>(
     let annot = segments.value.map((segment) =>
       segment.map((word): Annotated => ({ ...word }))
     );
-    fullTrace.value.forEach((seg) =>
-      seg.forEach(({ t, s, w }) => (annot[s][w].corpus = corpusTokens.value[t]))
+    trace.value.forEach(
+      ({ t, s, w }) => (annot[s][w].corpus = corpusTokens.value[t])
     );
     return annot;
   });
@@ -119,9 +133,12 @@ export function useSegmentAligner<Word extends { word: string }>(
     corpusMetaphones,
     segmentMetaphones,
     phoneScores,
-    phoneTraces,
+    matchReward,
+    mismatchPenality,
+    deletePenality,
+    insertPenality,
     minWordCount,
-    fullTrace,
     annotatedSegments,
+    trace,
   };
 }
