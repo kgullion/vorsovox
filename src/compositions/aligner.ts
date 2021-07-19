@@ -106,9 +106,8 @@ export function useSegmentAligner<Word extends { word: string }>(
           ])
           .filter((point, i, arr) => !isEqual(point, arr[i - 1]))
           .forEach(([t, w]) => trace.push({ s: segmentIdx, t, w }));
-        // move back to word phone not in first word of current segment
-        while (corpusPhones.value[corpusPhoneIdx - 1]?.t >= corpusTokenIdxStart)
-          corpusPhoneIdx--;
+        // move corpus pointer to previous phone
+        corpusPhoneIdx = i - 1
       }
       // exit early if whole corpus is matched
       if (corpusPhoneIdx <= 0) break;
