@@ -21,7 +21,7 @@ ElTabs(v-model="tab")
     | To: 
     ElInputNumber(v-model="activeRegion.end" @change="updateActiveRegion(activeRegion)")
     br
-    ElButton(@click="addRemoveRegion" :disabled="activeRegion.start===undefined || activeRegion.end===undefined") {{ activeRegion.id?"Delete":"Add" }} Region
+    ElButton(@click="addRemoveRegion") {{ activeRegion.id?"Delete":"Add" }} Region
   ElTabPane(label="Export" name="export" :disabled="transcribing || !audioBuffer")
     Download(:audioBuffer="audioBuffer" :segments="exportSegments")
 ElProgress(:percentage="percentage" v-show="transcribing")
@@ -87,14 +87,15 @@ const regionSpans = ref(new Map<string, [number, number]>());
 type ActiveRegion = { id?: string; start?: number; end?: number };
 const activeRegion = ref<ActiveRegion>({});
 // updaters
-const addRemoveRegion = (act: any) => {
+const addRemoveRegion = () => {
+  const act = activeRegion.value
   if (act.id) {
     const region = regionMap.value.get(act.id);
     region?.remove();
     regionMap.value.delete(act.id);
   } else
     wavesurfer.value?.regions.add({
-      id: new Date().toString(),
+      id: new Date().getTime().toString(),
       start: act.start,
       end: act.end,
       color: activeRegionColor,
@@ -140,8 +141,10 @@ const removeHandler = (region: Region) => {
 };
 const updateHandler = (region: Region) => {
   const span = regionSpans.value.get(region.id);
-  if (span && (span[0] !== region.start || span[1] !== region.end))
+  if (span && (span[0] !== region.start || span[1] !== region.end)) {
+    tab.value = "edit"
     autoAlign.value = false;
+  }
   regionMap.value.set(region.id, region);
   regionSpans.value.set(region.id, [region.start, region.end]);
   if (region.color === activeRegionColor) {
