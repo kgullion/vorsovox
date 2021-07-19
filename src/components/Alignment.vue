@@ -25,11 +25,14 @@ ElTabs(v-model="tab")
   ElTabPane(label="Export" name="export" :disabled="transcribing || !audioBuffer")
     Download(:audioBuffer="audioBuffer" :segments="exportSegments")
 ElProgress(:percentage="percentage" v-show="transcribing")
-ElCard(v-loading="transcribing" element-loading-text="Transcribing Audio...")
-  div(ref="waveformDiv" style="height: 200px")
+ElCard
+  ElRow(v-loading="transcribing" element-loading-text="Transcribing Audio...")
+    ElCol
+      div(ref="waveformDiv")
+  ElSlider(v-model="zoomLevel" @change="updateZoom" :show-tooltip="false" v-show="audioBuffer")
   audio(ref="audio")
-  span(v-for="word in wordSpans" :class="['word', transcribing||word.regionId?'':'nonregion', word.active?'active':'']" @click="setActiveRegionId(word.regionId)") {{ word.word+" " }}
-  span.active {{partial}}
+  span(v-for="word in wordSpans" :class="['word', word.regionId?'':'nonregion', word.active?'active':'']" @click="setActiveRegionId(word.regionId)") {{ word.word+" " }}
+  span.active.nonregion {{partial}}
 </template>
 
 <script setup lang="ts">
@@ -40,9 +43,12 @@ import {
   ElButton,
   ElProgress,
   ElSwitch,
+  ElSlider,
   ElCard,
   ElTabs,
   ElTabPane,
+  ElRow,
+  ElCol,
 } from "element-plus";
 import { sortedIndexBy } from "lodash";
 
@@ -59,6 +65,7 @@ import type { Region, RegionParams } from "wavesurfer.js/src/plugin/regions";
 const regionColor = "#00000022";
 const activeRegionColor = "#00000088";
 
+const zoomLevel = ref(0)
 const tab = ref("files");
 const corpus = ref<string>("");
 const audioBuffer = ref<AudioBuffer>();
@@ -155,8 +162,10 @@ watchEffect(() => {
   const ws = WaveSurfer.create({
     audioContext: getAudioContext(),
     container: waveformDiv.value,
-    waveColor: "violet",
-    progressColor: "purple",
+    partialRender: true,
+    cursorColor: "#00000000",
+    waveColor: "gray",
+    progressColor: "gray",
     plugins: [{ name: "regions", params: {}, instance: RegionsPlugin }],
   });
   ws.on("region-created", createHandler);
@@ -229,6 +238,7 @@ const exportSegments = computed(() =>
     end,
   ])
 );
+const updateZoom = ()=>wavesurfer.value?.zoom((zoomLevel.value**3)/2048-(zoomLevel.value**2)/16+4*zoomLevel.value+1)
 </script>
 
 <style>
