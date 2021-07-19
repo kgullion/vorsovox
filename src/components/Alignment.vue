@@ -65,7 +65,7 @@ import type { Region, RegionParams } from "wavesurfer.js/src/plugin/regions";
 const regionColor = "#00000022";
 const activeRegionColor = "#00000088";
 
-const zoomLevel = ref(0)
+const zoomLevel = ref(0);
 const tab = ref("files");
 const corpus = ref<string>("");
 const audioBuffer = ref<AudioBuffer>();
@@ -88,7 +88,7 @@ type ActiveRegion = { id?: string; start?: number; end?: number };
 const activeRegion = ref<ActiveRegion>({});
 // updaters
 const addRemoveRegion = () => {
-  const act = activeRegion.value
+  const act = activeRegion.value;
   if (act.id) {
     const region = regionMap.value.get(act.id);
     region?.remove();
@@ -142,7 +142,7 @@ const removeHandler = (region: Region) => {
 const updateHandler = (region: Region) => {
   const span = regionSpans.value.get(region.id);
   if (span && (span[0] !== region.start || span[1] !== region.end)) {
-    tab.value = "edit"
+    tab.value = "edit";
     autoAlign.value = false;
   }
   regionMap.value.set(region.id, region);
@@ -166,9 +166,6 @@ watchEffect(() => {
     audioContext: getAudioContext(),
     container: waveformDiv.value,
     partialRender: true,
-    cursorColor: "#00000000",
-    waveColor: "gray",
-    progressColor: "gray",
     plugins: [{ name: "regions", params: {}, instance: RegionsPlugin }],
   });
   ws.on("region-created", createHandler);
@@ -176,6 +173,9 @@ watchEffect(() => {
   ws.on("region-update-end", updateHandler);
   ws.on("region-removed", removeHandler);
   ws.on("region-mouseenter", setActiveRegion);
+  ws.on("region-dblclick", (region: Region) =>
+    setTimeout(() => ws.play(region.start, region.end), 0)
+  );
   wavesurfer.value = ws;
 });
 
@@ -241,7 +241,13 @@ const exportSegments = computed(() =>
     end,
   ])
 );
-const updateZoom = ()=>wavesurfer.value?.zoom((zoomLevel.value**3)/2048-(zoomLevel.value**2)/16+4*zoomLevel.value+1)
+const updateZoom = () =>
+  wavesurfer.value?.zoom(
+    zoomLevel.value ** 3 / 2048 -
+      zoomLevel.value ** 2 / 16 +
+      4 * zoomLevel.value +
+      1
+  );
 </script>
 
 <style>
